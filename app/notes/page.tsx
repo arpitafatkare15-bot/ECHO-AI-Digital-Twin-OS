@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { db, auth } from "../../lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import {
   addDoc,
   collection,
   getDocs,
   query,
   where,
+  orderBy,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -20,7 +21,7 @@ export default function NotesPage() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setUserId(user.uid);
-        loadNotes(user.uid);
+        fetchNotes(user.uid);
       }
     });
 
@@ -28,26 +29,29 @@ export default function NotesPage() {
   }, []);
 
 
-  const loadNotes = async (uid: string) => {
+  const fetchNotes = async (uid: string) => {
     const q = query(
       collection(db, "notes"),
-      where("userId", "==", uid)
+      where("userId", "==", uid),
+      orderBy("createdAt", "desc")
     );
 
-    const querySnapshot = await getDocs(q);
+    const snapshot = await getDocs(q);
 
-    const savedNotes = querySnapshot.docs.map((doc) => ({
+    const notesData = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
 
-    setNotes(savedNotes);
+    setNotes(notesData);
   };
 
 
   const saveNote = async () => {
-
-    if (!note.trim()) return;
+    if (!note.trim()) {
+      alert("Please write something");
+      return;
+    }
 
     await addDoc(collection(db, "notes"), {
       text: note,
@@ -57,7 +61,7 @@ export default function NotesPage() {
 
     setNote("");
 
-    loadNotes(userId);
+    fetchNotes(userId);
   };
 
 
@@ -69,23 +73,23 @@ export default function NotesPage() {
       </h1>
 
       <p className="text-gray-400 mt-2">
-        Save your important memories.
+        Your AI Digital Twin Memory
       </p>
 
 
-      <div className="mt-8">
+      <div className="mt-8 max-w-xl">
 
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Write your note..."
-          className="w-full max-w-xl h-32 p-4 rounded-lg bg-slate-800 text-white"
+          placeholder="Write your memory..."
+          className="w-full h-32 p-4 rounded-xl bg-slate-800 text-white outline-none"
         />
 
 
         <button
           onClick={saveNote}
-          className="mt-4 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg"
+          className="mt-4 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl"
         >
           Save Note
         </button>
@@ -96,21 +100,30 @@ export default function NotesPage() {
       <div className="mt-10 max-w-xl">
 
         <h2 className="text-2xl font-semibold mb-4">
-          Your Notes
+          Saved Notes
         </h2>
 
 
-        {notes.map((item) => (
-          <div
-            key={item.id}
-            className="bg-slate-800 p-4 rounded-lg mb-3"
-          >
-            {item.text}
-          </div>
-        ))}
+        {notes.length === 0 ? (
+          <p className="text-gray-400">
+            No notes yet.
+          </p>
+        ) : (
+
+          notes.map((item) => (
+
+            <div
+              key={item.id}
+              className="bg-slate-800 p-4 rounded-xl mb-3"
+            >
+              {item.text}
+            </div>
+
+          ))
+
+        )}
 
       </div>
-
 
     </main>
   );
